@@ -1,9 +1,8 @@
+from requests_html import HTMLSession
 from flask import Flask, render_template
-from urllib.request import urlopen
-from json import loads
 
-
-app = Flask(name)
+session = HTMLSession()
+app = Flask(__name__)
 @app.route('/')
 
 
@@ -15,29 +14,40 @@ def index():
 
 
 def get_privat_valute():
-    r = loads(urlopen("https://api.privatbank.ua/p24api/pubinfo?json&exchange&coursid=5%22).read())
+    r = session.get('https://privatbank.ua/rates-archive')
+    r = r.html.find('.currency-pairs')[0:3]
+    
+    for i, value in enumerate(r):
+       r[i] = value.text
+    
+    print(r)
 
-    for d in r:
-        for key in d:
-            if key == "ccy":
-                name = d[key]
-                print(key, " ",d[key])
-            elif key == "buy":
-                buy = round(float(d[key]),2)
-                print(key, " ",d[key])
-            elif key == "sale":
-                sale = round(float(d[key]),2)
-                print(key, " ",d[key])
+    for el in r:
+        name = el[0:3]
+        buy = ""
+        sell = ""
+        mode = 0
 
-        list_of_currencys.append(Currency(name, buy, sale))
+        for symbol in el:
+            if symbol.isdigit() or symbol==".":
+                if mode in (0, 1):
+                    mode = 1
+                    buy += symbol
+                else:
+                    sell += symbol
+            elif mode == 1:
+                    print("check")
+                    mode = 2
+        
+        list_of_currencys.append(Currency(name, buy, sell))
 
 
 class Currency():
-    def init(self, name_of_currency, buy_price, sale_price):
+    def __init__(self, name_of_currency, buy_price, sell_price):
         self.name = name_of_currency
         self.buy = buy_price
-        self.sale = sale_price
+        self.sell = sell_price
 
 
-if name == "main":
+if __name__ == "__main__":
     app.run(debug=True)
